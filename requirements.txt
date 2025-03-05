@@ -1,0 +1,8 @@
+Flask==3.0.0
+Pillow==10.2.0
+numpy==1.26.4
+opencv-python-headless==4.9.0.80
+ultralytics==8.1.33
+keras==3.0.5
+requests==2.31.0
+gunicorn==23.0.0
