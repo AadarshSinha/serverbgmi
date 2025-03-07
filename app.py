@@ -7,20 +7,27 @@ import numpy as np
 from ultralytics import YOLO
 import traceback
 import json
+from pathlib import Path
 
+def getPath():
+    script_dir = str(Path(__file__).parent)
+    prefix = script_dir.split("serverbgmi")[0] + "serverbgmi"
+    return prefix
+path_prefix = getPath()
+print(f"Path prefix : {path_prefix}")
 app = Flask(__name__)
 sift = cv2.SIFT_create()
 index_params = dict(algorithm=1, trees=20)
 search_params = dict(checks=50)
 flann = cv2.FlannBasedMatcher(index_params, search_params)
-combine_map_normal = cv2.imread('/Users/aadarshsinha/Desktop/VsCode/serverbgmi/Map/combine_new.png',  cv2.IMREAD_COLOR)
+combine_map_normal = cv2.imread(f'{path_prefix}/Map/combine_new.png',  cv2.IMREAD_COLOR)
 combine_map = cv2.cvtColor(combine_map_normal, cv2.COLOR_BGR2GRAY)
 combine_map_kp, combine_map_des = sift.detectAndCompute(combine_map, None)
-with open("/Users/aadarshsinha/Desktop/VsCode/serverbgmi/constants.json", "r") as file:
+with open(f"{path_prefix}/constants.json", "r") as file:
     map_constants = json.load(file)
-model_circle_detection = YOLO('/Users/aadarshsinha/Desktop/VsCode/serverbgmi/Models/bestFull.pt')
-model_path = "/Users/aadarshsinha/Desktop/VsCode/serverbgmi/Models/e12/model.h5"
-scaler_path = "/Users/aadarshsinha/Desktop/VsCode/serverbgmi/Models/e12/scaler.pkl"
+model_circle_detection = YOLO(f'{path_prefix}/Models/bestFull.pt')
+model_path = f"{path_prefix}/Models/e12/model.h5"
+scaler_path = f"{path_prefix}/Models/e12/scaler.pkl"
 model_e12 = keras.models.load_model(model_path, compile=False)
 
 with open(scaler_path, 'rb') as f:
