@@ -9,6 +9,7 @@ import traceback
 import json
 from pathlib import Path
 
+
 def getPath():
     script_dir = str(Path(__file__).parent)
     prefix = script_dir.split("serverbgmi")[0] + "serverbgmi"
