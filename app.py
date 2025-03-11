@@ -36,6 +36,10 @@ with open(scaler_path, 'rb') as f:
     scaler_X = scalers['scaler_X']
     scaler_y = scalers['scaler_y']
 
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({"message": "Server is live!"})
+
 @app.route("/predict", methods=["POST"])
 def predict():
     if "file" not in request.files:
