@@ -11,11 +11,8 @@ from pathlib import Path
 import os
 from flask_cors import CORS
 import io
-def getPath():
-    script_dir = str(Path(__file__).parent)
-    prefix = script_dir.split("serverbgmi")[0] + "serverbgmi"
-    return prefix
-path_prefix = getPath()
+
+path_prefix = str(Path(__file__).parent.absolute())
 
 app = Flask(__name__)
 CORS(app)
