@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from PIL import Image
 import pickle
 import keras
@@ -9,7 +9,8 @@ import traceback
 import json
 from pathlib import Path
 import os
-
+from flask_cors import CORS
+import io
 def getPath():
     script_dir = str(Path(__file__).parent)
     prefix = script_dir.split("serverbgmi")[0] + "serverbgmi"
@@ -17,6 +18,7 @@ def getPath():
 path_prefix = getPath()
 
 app = Flask(__name__)
+CORS(app)
 
 sift = cv2.SIFT_create()
 index_params = dict(algorithm=1, trees=20)
@@ -85,13 +87,28 @@ def predict():
     input = np.array([[zone_data["template_center"][0], zone_data["template_center"][1]]])
     output = get_template_predicted_zone(map_type, zone_number, input)
     target_x, target_y = get_frame_predicted_zone(output, zone_data["matrix"])
-    target_radius = (zone_data["frame_radius"] * zone_value)/zone_data["template_radius"]
-    target_zone = {"predicted_center": (float(target_x), float(target_y)), "predicted_radius": target_radius, "frame_center": zone_data["frame_center"] }
-
-    save_result(output[0][0], output[0][1], zone_value, "result1")
-    print(f"Predicted zone cordinated on frame {target_zone} MAP : {map_type} Current Zone : {zone_number}")
-
-    return target_zone
+    target_radius = int((zone_data["frame_radius"] * zone_value) / zone_data["template_radius"])
+    predicted_center = np.array([float(target_x), float(target_y)],dtype=np.float32)
+    frame_center = np.array(zone_data["frame_center"],dtype=np.float32)
+    # save_result(output[0][0], output[0][1], zone_value, "result1")
+    cv2.circle(image,tuple(map(int, predicted_center)),target_radius,(0, 255, 0),3)
+    direction = predicted_center - frame_center
+    distance = np.linalg.norm(direction)
+    if distance > 0:
+        unit_vector = direction / distance
+        arrow_end = frame_center + unit_vector * target_radius
+        arrow_end = tuple(map(int, arrow_end))
+        cv2.arrowedLine(image,tuple(map(int, predicted_center)),arrow_end,(0, 0, 255),3,tipLength=0.4)
+    success, buffer = cv2.imencode(".jpg", image)
+    if not success:
+        return {"error": "Image encoding failed"}, 500
+    io_buf = io.BytesIO(buffer)
+    io_buf.seek(0)
+    print("Returning processed image")
+    return send_file(
+        io_buf,
+        mimetype="image/jpeg"
+    )
 
 def get_frame_predicted_zone(output, matrix):
     predicted_template_point = np.array([[output[0]]], dtype=np.float32)
@@ -263,5 +280,8 @@ def getMapType(center):
         return "m"
     return "Unknown"
 
+import os
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
