@@ -17,21 +17,17 @@ path_prefix = str(Path(__file__).parent.absolute())
 app = Flask(__name__)
 CORS(app)
 
-sift = cv2.SIFT_create()
-index_params = dict(algorithm=1, trees=20)
-search_params = dict(checks=50)
-flann = cv2.FlannBasedMatcher(index_params, search_params)
-
+sift = None
+index_params = None
+search_params = None
+flann = None
+map_constants = None
 combine_map_normal = None
 combine_map = None
 combine_map_kp = None
 combine_map_des = None
 model_circle_detection = None
 models_initialized = False
-
-with open(f"{path_prefix}/constants.json", "r") as file:
-    map_constants = json.load(file)
-
 models_dict = {}
 
 def initialize_models():
@@ -65,6 +61,8 @@ def initialize_models():
 def initialize_heavy_objects():
     global combine_map_normal, combine_map, combine_map_kp, combine_map_des
     global model_circle_detection, models_initialized
+    global sift, index_params, search_params, flann
+    global map_constants
 
     if models_initialized:
         return
@@ -77,6 +75,13 @@ def initialize_heavy_objects():
 
     model_circle_detection = YOLO(f'{path_prefix}/Models/bestFull.pt')
 
+    sift = cv2.SIFT_create()
+    index_params = dict(algorithm=1, trees=20)
+    search_params = dict(checks=50)
+    flann = cv2.FlannBasedMatcher(index_params, search_params)
+
+    with open(f"{path_prefix}/constants.json", "r") as file:
+        map_constants = json.load(file)
     initialize_models()
 
     models_initialized = True
@@ -300,6 +305,6 @@ def getMapType(center):
 import os
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 4000))
     print(f"Starting server on port {port}...")
     app.run(host="0.0.0.0", port=port)
