@@ -69,16 +69,16 @@ def initialize_heavy_objects():
 
     print("Initializing heavy models...")
 
-    combine_map_normal = cv2.imread(f'{path_prefix}/Map/combine_new.png', cv2.IMREAD_COLOR)
-    combine_map = cv2.cvtColor(combine_map_normal, cv2.COLOR_BGR2GRAY)
-    combine_map_kp, combine_map_des = sift.detectAndCompute(combine_map, None)
-
-    model_circle_detection = YOLO(f'{path_prefix}/Models/bestFull.pt')
 
     sift = cv2.SIFT_create()
     index_params = dict(algorithm=1, trees=20)
     search_params = dict(checks=50)
     flann = cv2.FlannBasedMatcher(index_params, search_params)
+    combine_map_normal = cv2.imread(f'{path_prefix}/Map/combine_new.png', cv2.IMREAD_COLOR)
+    combine_map = cv2.cvtColor(combine_map_normal, cv2.COLOR_BGR2GRAY)
+    combine_map_kp, combine_map_des = sift.detectAndCompute(combine_map, None)
+
+    model_circle_detection = YOLO(f'{path_prefix}/Models/bestFull.pt')
 
     with open(f"{path_prefix}/constants.json", "r") as file:
         map_constants = json.load(file)
@@ -89,9 +89,10 @@ def initialize_heavy_objects():
 
 print("Server started . . . ")
 
+initialize_heavy_objects()
+
 @app.route("/", methods=["GET"])
 def home():
-    initialize_heavy_objects()
     return jsonify({"message": "Server is live!"})
 
 @app.route("/predict", methods=["POST"])
