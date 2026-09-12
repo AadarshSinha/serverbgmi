@@ -76,6 +76,7 @@ lint-config:
 	@if ! grep -q '^APP_ENV=production' .env; then echo ".env does not set APP_ENV=production"; exit 1; fi
 	@if grep -q '^JWT_SECRET_KEY=dev-only-insecure-secret' .env; then echo "JWT_SECRET_KEY is still the development default"; exit 1; fi
 	@if grep -qE '^DATABASE_URL=.*(localhost|127\.0\.0\.1|@db:)' .env; then echo "DATABASE_URL points at a local database — production needs the managed one"; exit 1; fi
+	@if grep -qE '^[A-Z_]+=.*[<>]' .env; then echo "Unfilled placeholders in .env:"; grep -nE '^[A-Z_]+=.*[<>]' .env | cut -d= -f1; exit 1; fi
 
 # --- both --------------------------------------------------------------------
 
