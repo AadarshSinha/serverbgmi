@@ -1,0 +1,32 @@
+# Keep the build context small and free of host state. Everything here either
+# does not belong in an image or actively breaks it (a macOS venv certainly
+# would).
+
+# local virtualenvs
+myenv/
+venv/
+.venv/
+
+# python scratch
+__pycache__/
+*.pyc
+*.pyo
+
+# secrets and local config — the container gets its environment from compose
+.env
+.env.local
+
+# local database and stored uploads live in the /data volume, not the image
+*.db
+*.sqlite3
+uploads/
+
+# sample screenshots and rendered outputs: 4MB of build context nobody needs
+TestData/
+TestResult/
+
+# repo and editor noise
+.git/
+.gitignore
+.DS_Store
+*.md

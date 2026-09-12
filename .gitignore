@@ -1,4 +1,16 @@
 myenv
 myenv/
+venv/
+.venv/
 __pycache__/
 *.pyc
+.DS_Store
+
+# secrets and local config
+.env
+.env.local
+
+# local database + stored uploads
+*.db
+*.sqlite3
+uploads/

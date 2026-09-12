@@ -1,0 +1,64 @@
+# Local development overlay. Never loaded on the server — it only applies when
+# named explicitly:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# which is what `make dev` runs. Same image, same entrypoint, same Python and
+# the same database engine as production; only the settings below differ.
+services:
+  api:
+    # The source is mounted over /app so edits are picked up without a rebuild.
+    # The container still writes only to /data, never into this mount.
+    volumes:
+      - .:/app
+      - zp-data:/data
+
+    environment:
+      # Development defaults, spelled out here rather than depending on what
+      # happens to be in your .env — the whole point is that a laptop and the
+      # droplet differ in exactly these lines and nothing else.
+      APP_ENV: development
+      ALLOWED_ORIGINS: "*"
+      # Postgres, same as production. The host is `db` because that is the
+      # service name on the compose network; from your shell the same database
+      # is reachable on localhost:5432.
+      DATABASE_URL: postgresql://zonepredictor:localdev@db:5432/zonepredictor
+      # Restart the workers when a .py file changes. A reload costs the same
+      # ~1 minute as a cold boot because TensorFlow has to be re-imported; set
+      # LOAD_MODELS=false while working on routes or auth to skip that.
+      GUNICORN_RELOAD: "1"
+
+    # Waits for the database to accept connections, not merely to exist —
+    # otherwise the first boot races Postgres's own initialisation and the app
+    # dies on a connection refused.
+    depends_on:
+      db:
+        condition: service_healthy
+
+    # A crashed container should stay crashed locally so the traceback is the
+    # last thing on screen, instead of scrolling past a restart loop.
+    restart: "no"
+
+  db:
+    image: postgres:16-alpine
+    container_name: zonepredictor-db
+    restart: "no"
+    environment:
+      POSTGRES_USER: zonepredictor
+      POSTGRES_PASSWORD: localdev
+      POSTGRES_DB: zonepredictor
+    # Published so the venv, psql, TablePlus or any GUI on your Mac can reach
+    # the same database the container uses. Loopback only — never the LAN.
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - zp-pgdata:/var/lib/postgresql/data
+      - ./deploy/postgres:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zonepredictor -d zonepredictor"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  zp-pgdata:

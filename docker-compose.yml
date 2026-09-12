@@ -1,0 +1,39 @@
+services:
+  api:
+    build: .
+    image: zonepredictor-api:latest
+    container_name: zonepredictor-api
+    restart: unless-stopped
+
+    # Created from .env.example on the server. Compose refuses to start without
+    # it, which is the right failure: no silent boot on development defaults.
+    env_file: .env
+
+    environment:
+      LOCAL_UPLOAD_DIR: /data/uploads
+      # One worker holds one full copy of TensorFlow, the Keras models, the
+      # YOLO detector and the stitched map. Two workers double that memory and
+      # let two predictions run at once — raise it only after watching
+      # `docker stats` on this droplet.
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-1}
+      GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-120}
+
+    # The 127.0.0.1 prefix is load-bearing. Docker writes its own iptables
+    # rules that sit in front of ufw, so plain "4000:4000" would publish the
+    # API to the entire internet no matter what `ufw deny 4000` says. Only
+    # nginx on this host needs to reach it.
+    ports:
+      - "127.0.0.1:4000:4000"
+
+    volumes:
+      - zp-data:/data
+
+    # Without this, container logs grow until the droplet's disk is full.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  zp-data:

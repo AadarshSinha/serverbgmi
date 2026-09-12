@@ -1,22 +1,43 @@
-import cv2
+"""Smoke-test the running prediction server against a local image.
+
+Usage:
+    python test.py                                    # TestData/test3.jpg
+    python test.py TestData/test1.jpg
+    python test.py TestData/test1.jpg http://192.168.1.20:4000
+"""
+import sys
+import os
+from pathlib import Path
+
 import requests
 
-file = "test3.jpg"
-image_path = f"/Users/aadarshsinha/Desktop/VsCode/serverbgmi/TestData/{file}"
+path_prefix = Path(__file__).parent.absolute()
 
-url = "http://127.0.0.1:5000/predict"
-files = {"file": open(image_path, "rb")}
-response = requests.post(url, files=files)
-data = response.json()
+image_path = sys.argv[1] if len(sys.argv) > 1 else str(path_prefix / "TestData" / "test3.jpg")
+base_url = sys.argv[2] if len(sys.argv) > 2 else os.environ.get(
+    "BASE_URL", "http://127.0.0.1:4000"
+)
 
-image = cv2.imread(image_path)
+if not os.path.exists(image_path):
+    sys.exit(f"No such image: {image_path}")
 
-center = tuple(map(int, data["center"]))  # Convert center to tuple of integers
-radius = int(data["radius"])  # Convert radius to integer
+with open(image_path, "rb") as fh:
+    response = requests.post(f"{base_url}/predict", files={"file": fh})
 
-cv2.circle(image, center, radius, (0, 0, 255), 3)
+# The server answers with an annotated JPEG on success, or JSON explaining why
+# it could not predict.
+content_type = response.headers.get("Content-Type", "")
 
-output_path = f"/Users/aadarshsinha/Desktop/VsCode/serverbgmi/TestResult/{file}"
-cv2.imwrite(output_path, image)
-
-print("Circle marked and saved successfully at:", output_path)
+if response.ok and content_type.startswith("image/"):
+    output_dir = path_prefix / "TestResult"
+    output_dir.mkdir(exist_ok=True)
+    output_path = output_dir / Path(image_path).name
+    output_path.write_bytes(response.content)
+    print(f"OK {response.status_code} - annotated image saved to {output_path}")
+else:
+    try:
+        payload = response.json()
+        print(f"FAILED {response.status_code} [{payload.get('code')}] {payload.get('error')}")
+    except ValueError:
+        print(f"FAILED {response.status_code} - unexpected body: {response.text[:200]!r}")
+    sys.exit(1)
