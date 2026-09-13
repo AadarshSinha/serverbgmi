@@ -159,12 +159,20 @@ class Feedback(db.Model):
 
     __tablename__ = "feedback"
 
+    # Which game they actually play. The whole reason the prompt exists: the
+    # tool was built for the mobile maps, and whether the traffic wants the PC
+    # game is a question prose answers badly and a tap answers exactly.
+    GAMES = ("pubg_pc", "pubg_mobile", "bgmi", "other")
+
     id = db.Column(db.Integer, primary_key=True)
     created_at = db.Column(
         db.DateTime(timezone=True), nullable=False, default=utcnow, index=True
     )
 
-    message = db.Column(db.Text, nullable=False)
+    # Either half can stand alone: a tap with no comment is a complete answer,
+    # and so is a comment from someone who skipped the buttons.
+    game = db.Column(db.String(16), nullable=True, index=True)
+    message = db.Column(db.Text, nullable=True)
 
     user_id = db.Column(
         db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
@@ -183,6 +191,7 @@ class Feedback(db.Model):
         return {
             "id": self.id,
             "createdAt": self.created_at.isoformat() if self.created_at else None,
+            "game": self.game,
             "message": self.message,
             "timezone": self.timezone,
             "locale": self.locale,

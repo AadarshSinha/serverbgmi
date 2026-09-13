@@ -88,7 +88,7 @@ development data. Run from the venv with no `TEST_DATABASE_URL` set and it
 falls back to a temporary SQLite file per test, so the tests still work with
 nothing installed but the venv.
 
-71 tests covering the HTTP contract: auth, prediction feedback, upload storage,
+75 tests covering the HTTP contract: auth, prediction feedback, upload storage,
 the error codes the frontend branches on, request logging, the billing scaffold
 and the production config guard. The ML pipeline is stubbed, so no model files
 are needed.
@@ -287,7 +287,7 @@ See `.env.example` for the full list with comments. The ones that matter:
 | GET | `/auth/me` | JWT | Current user |
 | POST | `/predict` | optional JWT | The prediction. Returns `image/jpeg` plus an `X-Prediction-Id` header |
 | POST | `/predict/<id>/feedback` | optional JWT | Rate a prediction: `spot_on` / `close` / `way_off` |
-| POST | `/feedback` | optional JWT | Free-text answer to the site's one-question prompt |
+| POST | `/feedback` | optional JWT | Which game they play, plus an optional comment |
 | GET | `/billing/plans` | — | Plan catalogue |
 | POST | `/billing/checkout` | JWT | Cashfree order — 503 until billing is on |
 | POST | `/billing/webhook` | signature | Cashfree payment updates |

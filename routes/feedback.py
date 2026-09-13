@@ -21,8 +21,20 @@ def submit_feedback():
     payload = request.get_json(silent=True) or {}
 
     message = (payload.get("message") or "").strip()
-    if not message:
-        raise ApiError("VALIDATION_ERROR", "Please write something first.", 400)
+    game = (payload.get("game") or "").strip() or None
+
+    if game is not None and game not in Feedback.GAMES:
+        raise ApiError(
+            "VALIDATION_ERROR",
+            "Game must be one of: " + ", ".join(Feedback.GAMES) + ".",
+            400,
+        )
+
+    # A tap on its own is a complete answer -- requiring text alongside it is
+    # what kills the response rate this prompt exists to protect.
+    if not message and game is None:
+        raise ApiError("VALIDATION_ERROR", "Please pick an option or write something.", 400)
+
     if len(message) > MAX_MESSAGE_LENGTH:
         raise ApiError(
             "VALIDATION_ERROR",
@@ -33,7 +45,8 @@ def submit_feedback():
     identity = get_jwt_identity()
 
     entry = Feedback(
-        message=message,
+        game=game,
+        message=message or None,
         user_id=int(identity) if identity else None,
         # Sent by the browser; both are plain strings like "Asia/Kolkata" and
         # "en-US", and neither requires the user to grant anything.

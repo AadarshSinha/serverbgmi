@@ -547,7 +547,32 @@ class ProductFeedbackTests(ApiTestCase):
         entry = db.session.scalars(db.select(Feedback)).first()
         self.assertIsNotNone(entry.user_id)
 
-    def test_an_empty_answer_is_refused(self):
+    def test_a_tap_alone_is_a_complete_answer(self):
+        # The whole point of the buttons: no typing required.
+        response = self.client.post("/feedback", json={"game": "pubg_pc"})
+        self.assertEqual(response.status_code, 201)
+
+        entry = db.session.scalars(db.select(Feedback)).first()
+        self.assertEqual(entry.game, "pubg_pc")
+        self.assertIsNone(entry.message)
+
+    def test_every_game_option_is_accepted(self):
+        for game in Feedback.GAMES:
+            response = self.client.post("/feedback", json={"game": game})
+            self.assertEqual(response.status_code, 201, game)
+
+    def test_an_unknown_game_is_refused(self):
+        response = self.client.post("/feedback", json={"game": "fortnite"})
+        self.assertApiError(response, 400, "VALIDATION_ERROR")
+
+    def test_a_tap_and_a_comment_travel_together(self):
+        self.client.post(
+            "/feedback", json={"game": "bgmi", "message": "later zones are off"}
+        )
+        entry = db.session.scalars(db.select(Feedback)).first()
+        self.assertEqual((entry.game, entry.message), ("bgmi", "later zones are off"))
+
+    def test_an_entirely_empty_answer_is_refused(self):
         response = self.client.post("/feedback", json={"message": "   "})
         self.assertApiError(response, 400, "VALIDATION_ERROR")
 
