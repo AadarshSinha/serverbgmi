@@ -65,12 +65,16 @@ def load_upload(key, config):
         return None
 
 
-def save_upload(raw_bytes, filename, config):
-    """Persist an image. Returns a storage key, or None if not stored."""
+def save_upload(raw_bytes, filename, config, prefix=None):
+    """Persist an image. Returns a storage key, or None if not stored.
+
+    `prefix` overrides the default key prefix, which is how failed predictions
+    are filed separately from results without needing a second bucket.
+    """
     if not config.STORE_UPLOADS or not raw_bytes:
         return None
 
-    key = build_key(config.S3_PREFIX, filename)
+    key = build_key(prefix or config.S3_PREFIX, filename)
 
     try:
         if config.S3_BUCKET:

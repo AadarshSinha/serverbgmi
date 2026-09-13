@@ -32,9 +32,12 @@ def predict():
     user_id = int(identity) if identity else None
 
     raw = _read_upload_bytes()
+    filename = request.files["file"].filename if "file" in request.files else None
 
-    # The stored image is the annotated result, so it cannot be written until
-    # the prediction has actually run. A request that fails stores no image.
+    # Nothing is stored until the prediction has run, because what gets kept
+    # depends on the outcome: the annotated result on success, the untouched
+    # upload on failure. The failures are the interesting ones -- a screenshot
+    # the pipeline could not read is exactly what the next model needs.
     log = PredictionLog(
         user_id=user_id,
         ip_hash=PredictionLog.hash_ip(_client_ip(), current_app.config["JWT_SECRET_KEY"]),
@@ -79,6 +82,7 @@ def predict():
     except ApiError as err:
         log.error_code = err.code
         log.status_code = err.status
+        _store_failed_upload(log, raw, filename)
         _finalise(log, started)
         print(f"Prediction failed [{err.code}]: {err.message}")
         return jsonify(err.to_dict()), err.status
@@ -88,6 +92,7 @@ def predict():
 
         log.error_code = "INTERNAL_ERROR"
         log.status_code = 500
+        _store_failed_upload(log, raw, filename)
         _finalise(log, started)
         print(traceback.format_exc())
         return (
@@ -151,6 +156,19 @@ def feedback(log_id):
     db.session.commit()
 
     return jsonify({"ok": True, "rating": log.rating}), 200
+
+
+def _store_failed_upload(log, raw, filename):
+    """Keep the screenshot a prediction could not handle.
+
+    Filed under a `failed/` prefix so these are trivial to list separately from
+    result images -- they are the training and debugging queue, not output.
+    """
+    config = current_app.config_object
+    log.image_key = storage.save_upload(
+        raw, filename, config, prefix=f"{config.S3_PREFIX}/failed"
+    )
+    log.image_bytes = len(raw) if raw else None
 
 
 def _record_geometry(log, result):

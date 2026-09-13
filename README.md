@@ -88,7 +88,7 @@ development data. Run from the venv with no `TEST_DATABASE_URL` set and it
 falls back to a temporary SQLite file per test, so the tests still work with
 nothing installed but the venv.
 
-65 tests covering the HTTP contract: auth, prediction feedback, upload storage,
+66 tests covering the HTTP contract: auth, prediction feedback, upload storage,
 the error codes the frontend branches on, request logging, the billing scaffold
 and the production config guard. The ML pipeline is stubbed, so no model files
 are needed.
@@ -378,8 +378,17 @@ was shown. Fetch any of them by row id:
 ./myenv/bin/python scripts/get_prediction_image.py 42
 ```
 
-A failed prediction has no result image, so it stores none; the row is still
-written with its error code.
+A **failed** prediction stores the user's untouched upload instead, under a
+`uploads/failed/` prefix — a screenshot the pipeline could not read is exactly
+the sample worth retraining on, and the prefix keeps that queue separate from
+result images:
+
+```sql
+SELECT id, created_at, error_code, image_key
+FROM prediction_logs
+WHERE NOT succeeded AND image_key IS NOT NULL
+ORDER BY created_at DESC;
+```
 
 Each row also carries the geometry the drawing was made from —
 `detected_center_x/y`, `predicted_center_x/y`, `predicted_radius`. Those are

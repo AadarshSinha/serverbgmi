@@ -391,15 +391,41 @@ class FeedbackTests(ApiTestCase):
         self.assertTrue(stored.startswith(b"\xff\xd8"), "stored bytes should be a JPEG")
         self.assertNotEqual(stored, VALID_PNG, "the upload itself must not be stored")
 
-    def test_a_failed_prediction_stores_no_image(self):
+    def test_a_failed_prediction_stores_the_upload(self):
+        """The screenshots the pipeline cannot read are the ones worth keeping."""
         import storage
 
-        with mock.patch.object(storage, "save_upload") as saved:
-            self.upload(b"not-an-image")
+        with mock.patch.object(
+            storage, "save_upload", return_value="uploads/failed/x.jpg"
+        ) as saved:
+            self.upload(b"not-an-image", filename="broken.png")
 
-        saved.assert_not_called()
+        saved.assert_called_once()
+        stored, name = saved.call_args.args[0], saved.call_args.args[1]
+        self.assertEqual(stored, b"not-an-image", "the untouched upload, not a result")
+        self.assertEqual(name, "broken.png")
+        self.assertEqual(saved.call_args.kwargs["prefix"], "uploads/failed")
+
         log = db.session.scalars(db.select(PredictionLog)).first()
-        self.assertIsNone(log.image_key)
+        self.assertEqual(log.image_key, "uploads/failed/x.jpg")
+        self.assertFalse(log.succeeded)
+        self.assertEqual(log.error_code, "INVALID_IMAGE")
+
+    def test_a_refused_map_keeps_the_screenshot_too(self):
+        # MAP_NOT_SUPPORTED and ZONE_NOT_DETECTED are the failures most worth
+        # collecting, since they say something about the model's coverage.
+        import storage
+
+        with mock.patch.object(
+            storage, "save_upload", return_value="uploads/failed/y.jpg"
+        ) as saved, mock.patch.object(
+            predictor, "get_template_cordinates", return_value=fake_zone(center=(2000, 100))
+        ):
+            response = self.upload(VALID_PNG, "vikendi.png")
+
+        self.assertApiError(response, 422, "MAP_NOT_SUPPORTED")
+        saved.assert_called_once()
+        self.assertEqual(saved.call_args.args[0], VALID_PNG)
 
     def test_the_prediction_geometry_is_recorded(self):
         # Only the clean screenshot is stored; these numbers are what let the
