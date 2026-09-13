@@ -150,6 +150,45 @@ class PredictionLog(db.Model):
         }
 
 
+class Feedback(db.Model):
+    """Free-text answers to "what are you actually looking for?".
+
+    Deliberately one field. The prompt asks a single question and takes a
+    single answer -- anything more and the response rate collapses.
+    """
+
+    __tablename__ = "feedback"
+
+    id = db.Column(db.Integer, primary_key=True)
+    created_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, default=utcnow, index=True
+    )
+
+    message = db.Column(db.Text, nullable=False)
+
+    user_id = db.Column(
+        db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+
+    # Where they are, as far as we can tell without asking permission. The
+    # browser's own timezone and locale place someone to a region -- no
+    # geolocation prompt, no third-party lookup, no raw address stored.
+    timezone = db.Column(db.String(64), nullable=True, index=True)
+    locale = db.Column(db.String(32), nullable=True)
+
+    ip_hash = db.Column(db.String(64), nullable=True, index=True)
+    user_agent = db.Column(db.String(256), nullable=True)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "createdAt": self.created_at.isoformat() if self.created_at else None,
+            "message": self.message,
+            "timezone": self.timezone,
+            "locale": self.locale,
+        }
+
+
 class Payment(db.Model):
     """Cashfree order records. Unused until BILLING_ENABLED is turned on."""
 

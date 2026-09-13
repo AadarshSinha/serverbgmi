@@ -39,7 +39,7 @@ import predictor  # noqa: E402
 from app import create_app  # noqa: E402
 from config import Config  # noqa: E402
 from extensions import db  # noqa: E402
-from models import PredictionLog, User  # noqa: E402
+from models import Feedback, PredictionLog, User  # noqa: E402
 
 
 # Point this at a throwaway Postgres to run the suite against the same engine
@@ -516,6 +516,50 @@ class FeedbackTests(ApiTestCase):
             f"/predict/{prediction_id}/feedback", json={"rating": "close"}
         )
         self.assertApiError(response, 422, "FEEDBACK_WINDOW_CLOSED")
+
+
+class ProductFeedbackTests(ApiTestCase):
+    """The one-question prompt: what are you actually looking for?"""
+
+    def test_a_visitor_can_answer_without_an_account(self):
+        response = self.client.post(
+            "/feedback",
+            json={
+                "message": "Need better accuracy in later zones",
+                "timezone": "Asia/Kolkata",
+                "locale": "en-IN",
+            },
+        )
+        self.assertEqual(response.status_code, 201)
+
+        entry = db.session.scalars(db.select(Feedback)).first()
+        self.assertEqual(entry.message, "Need better accuracy in later zones")
+        self.assertEqual(entry.timezone, "Asia/Kolkata")
+        self.assertEqual(entry.locale, "en-IN")
+        self.assertIsNone(entry.user_id)
+        self.assertIsNotNone(entry.ip_hash)
+
+    def test_a_signed_in_answer_is_attributed(self):
+        token = self.token_for()
+        self.client.post(
+            "/feedback", json={"message": "works great"}, headers=self.auth(token)
+        )
+        entry = db.session.scalars(db.select(Feedback)).first()
+        self.assertIsNotNone(entry.user_id)
+
+    def test_an_empty_answer_is_refused(self):
+        response = self.client.post("/feedback", json={"message": "   "})
+        self.assertApiError(response, 400, "VALIDATION_ERROR")
+
+    def test_a_very_long_answer_is_refused(self):
+        response = self.client.post("/feedback", json={"message": "x" * 2001})
+        self.assertApiError(response, 400, "VALIDATION_ERROR")
+
+    def test_location_fields_are_optional(self):
+        response = self.client.post("/feedback", json={"message": "fine as is"})
+        self.assertEqual(response.status_code, 201)
+        entry = db.session.scalars(db.select(Feedback)).first()
+        self.assertIsNone(entry.timezone)
 
 
 class ZoneLookupTests(unittest.TestCase):

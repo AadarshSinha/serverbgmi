@@ -88,7 +88,7 @@ development data. Run from the venv with no `TEST_DATABASE_URL` set and it
 falls back to a temporary SQLite file per test, so the tests still work with
 nothing installed but the venv.
 
-66 tests covering the HTTP contract: auth, prediction feedback, upload storage,
+71 tests covering the HTTP contract: auth, prediction feedback, upload storage,
 the error codes the frontend branches on, request logging, the billing scaffold
 and the production config guard. The ML pipeline is stubbed, so no model files
 are needed.
@@ -287,6 +287,7 @@ See `.env.example` for the full list with comments. The ones that matter:
 | GET | `/auth/me` | JWT | Current user |
 | POST | `/predict` | optional JWT | The prediction. Returns `image/jpeg` plus an `X-Prediction-Id` header |
 | POST | `/predict/<id>/feedback` | optional JWT | Rate a prediction: `spot_on` / `close` / `way_off` |
+| POST | `/feedback` | optional JWT | Free-text answer to the site's one-question prompt |
 | GET | `/billing/plans` | — | Plan catalogue |
 | POST | `/billing/checkout` | JWT | Cashfree order — 503 until billing is on |
 | POST | `/billing/webhook` | signature | Cashfree payment updates |
@@ -420,7 +421,7 @@ deploy/postgres/         creates the test database on first volume init
 app.py           application factory, error handlers
 config.py        environment-driven config + production guard
 predictor.py     the ML pipeline (the only module that imports TF/YOLO)
-models.py        User, PredictionLog, Payment
+models.py        User, PredictionLog, Feedback, Payment
 storage.py       uploads to any S3-compatible store or local disk
 scripts/         database migration, fetching stored result images
 errors.py        ApiError / PredictionError

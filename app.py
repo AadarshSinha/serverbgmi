@@ -20,7 +20,7 @@ import predictor  # noqa: E402
 from config import Config, parse_origins  # noqa: E402
 from errors import ApiError  # noqa: E402
 from extensions import db, migrate, jwt, cors  # noqa: E402
-from routes import health_bp, auth_bp, predict_bp, billing_bp  # noqa: E402
+from routes import health_bp, auth_bp, predict_bp, billing_bp, feedback_bp  # noqa: E402
 
 
 def create_app(config_object=Config):
@@ -51,6 +51,7 @@ def create_app(config_object=Config):
     app.register_blueprint(auth_bp)
     app.register_blueprint(predict_bp)
     app.register_blueprint(billing_bp)
+    app.register_blueprint(feedback_bp)
 
     _register_error_handlers(app)
 
